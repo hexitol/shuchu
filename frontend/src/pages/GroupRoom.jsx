@@ -230,6 +230,7 @@ function MemberCard({ m, isMe, tick, delay }) {
           style={{
             color: m.is_studying ? (m.subject_color || "#FF5B22") : "#F0ECE0",
             borderColor: m.is_studying ? (m.subject_color || "#FF5B22") : undefined,
+            "--pulse-color": `${m.subject_color || "#FF5B22"}88`,
           }}
         >
           {m.username?.[0]?.toUpperCase()}

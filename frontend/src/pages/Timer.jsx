@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { Play, Square, Plus, Check, Trash2, X, BookMarked, BookOpen, Zap, RotateCw, GripVertical } from "lucide-react";
+import { Play, Square, Plus, Check, Trash2, X, BookMarked, BookOpen, Zap, RotateCw, GripVertical, Flame } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatHMS, formatHM } from "@/lib/format";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ const COLORS = ["#FF5B22", "#C96442", "#E4A951", "#7EA172", "#5D9EA1", "#B084CC"
 
 export const MODES = [
   { key: "lecture", label: "Lecture", icon: BookOpen, tint: "#5D9EA1" },
-  { key: "practice", label: "Practice", icon: Zap, tint: "#FF5B22" },
+  { key: "practice", label: "Practice", icon: Zap, tint: "#6BBF7A" },
   { key: "revision", label: "Revision", icon: RotateCw, tint: "#B084CC" },
 ];
 
@@ -21,6 +21,7 @@ export default function TimerPage() {
   const [session, setSession] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [today, setToday] = useState({ total_seconds: 0, by_subject: [], by_mode: {} });
+  const [streak, setStreak] = useState(0);
   const [newSubject, setNewSubject] = useState("");
   const [newSubjectColor, setNewSubjectColor] = useState(COLORS[0]);
   const [showAddSubject, setShowAddSubject] = useState(false);
@@ -28,16 +29,18 @@ export default function TimerPage() {
   const tickRef = useRef(null);
 
   const loadAll = useCallback(async () => {
-    const [s, t, cur, tod] = await Promise.all([
+    const [s, t, cur, tod, st] = await Promise.all([
       api.get("/subjects"),
       api.get("/tasks"),
       api.get("/timer/current"),
       api.get("/logs", { params: { range: "day" } }),
+      api.get("/stats"),
     ]);
     setSubjects(s.data);
     setTasks(t.data);
     setSession(cur.data);
     setToday(tod.data);
+    setStreak(st.data.current_streak || 0);
     if (cur.data) {
       setActiveSubjectId(cur.data.subject_id);
       if (cur.data.mode) setMode(cur.data.mode);
@@ -73,8 +76,12 @@ export default function TimerPage() {
     try {
       await api.post("/timer/stop");
       setSession(null);
-      const tod = await api.get("/logs", { params: { range: "day" } });
+      const [tod, st] = await Promise.all([
+        api.get("/logs", { params: { range: "day" } }),
+        api.get("/stats"),
+      ]);
       setToday(tod.data);
+      setStreak(st.data.current_streak || 0);
       toast.success("Session logged");
     } catch (e) { toast.error("Failed to stop"); }
   };
@@ -132,22 +139,36 @@ export default function TimerPage() {
 
   return (
     <div className="px-6 md:px-12 py-10 md:py-14 max-w-7xl mx-auto pb-32 md:pb-14">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="flex items-baseline justify-between mb-10 md:mb-14">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} className="flex items-baseline justify-between mb-10 md:mb-14 gap-6 flex-wrap">
         <div>
           <div className="text-[10px] tracking-[0.3em] uppercase text-white/40 mb-2">
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </div>
           <h1 className="font-serif-display text-4xl sm:text-5xl">The desk</h1>
         </div>
-        <div className="text-right">
-          <div className="text-[10px] tracking-[0.3em] uppercase text-white/40 mb-1">Studied today</div>
-          <div className="font-mono-timer text-2xl sm:text-3xl" style={{ color: "#FF5B22" }} data-testid="today-total">{formatHM(todayTotal)}</div>
+        <div className="flex items-center gap-4">
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.25, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center gap-2 glass rounded-full px-4 py-2"
+            data-testid="streak-badge"
+            title={`${streak} day streak`}
+          >
+            <Flame className="w-4 h-4" style={{ color: streak > 0 ? "#FF5B22" : "#A39E93", filter: streak > 0 ? "drop-shadow(0 0 6px rgba(255,91,34,0.7))" : "none" }} />
+            <span className="font-mono-timer text-sm" style={{ color: streak > 0 ? "#FF5B22" : "#F0ECE0" }} data-testid="streak-count">{streak}</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase text-white/40">day{streak === 1 ? "" : "s"}</span>
+          </motion.div>
+          <div className="text-right">
+            <div className="text-[10px] tracking-[0.3em] uppercase text-white/40 mb-1">Studied today</div>
+            <div className="font-mono-timer text-2xl sm:text-3xl" style={{ color: "#FF5B22" }} data-testid="today-total">{formatHM(todayTotal)}</div>
+          </div>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Timer hero */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.7 }} className="lg:col-span-2 glass rounded-3xl p-8 md:p-12 relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="lg:col-span-2 glass rounded-3xl p-8 md:p-12 relative overflow-hidden">
           {isRunning && (
             <div className="absolute inset-0 pointer-events-none opacity-40" style={{ background: `radial-gradient(500px 300px at 50% 50%, ${activeColor}22, transparent 60%)` }} />
           )}
@@ -187,7 +208,10 @@ export default function TimerPage() {
             <div
               data-testid="timer-display"
               className={`font-mono-timer font-light text-6xl sm:text-7xl md:text-8xl lg:text-[9rem] leading-none tracking-tighter ${isRunning ? "timer-breathe" : ""}`}
-              style={{ color: isRunning ? activeColor : "#F0ECE0", textShadow: isRunning ? `0 0 40px ${activeColor}55` : "none" }}
+              style={{
+                color: isRunning ? activeColor : "#F0ECE0",
+                "--glow-color": `${activeColor}88`,
+              }}
             >
               {displayElapsed}
             </div>
@@ -209,7 +233,7 @@ export default function TimerPage() {
         </motion.div>
 
         {/* Subjects */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.7 }} className="glass rounded-3xl p-6 flex flex-col">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="glass rounded-3xl p-6 flex flex-col">
           <div className="flex items-center justify-between mb-5">
             <div>
               <div className="text-[10px] tracking-[0.3em] uppercase text-white/40">Subjects</div>
@@ -274,7 +298,7 @@ export default function TimerPage() {
         </motion.div>
 
         {/* Tasks — draggable */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.7 }} className="lg:col-span-2 glass rounded-3xl p-6 md:p-8">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="lg:col-span-2 glass rounded-3xl p-6 md:p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="text-[10px] tracking-[0.3em] uppercase text-white/40">Plan · drag to prioritize</div>
@@ -325,7 +349,7 @@ export default function TimerPage() {
         </motion.div>
 
         {/* Breakdown */}
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.7 }} className="glass rounded-3xl p-6">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.9, ease: [0.22, 1, 0.36, 1] }} className="glass rounded-3xl p-6">
           <div className="text-[10px] tracking-[0.3em] uppercase text-white/40">Breakdown</div>
           <h3 className="font-serif-display text-2xl mt-0.5 mb-5">By subject</h3>
           <div className="space-y-4">

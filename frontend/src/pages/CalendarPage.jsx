@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { formatHM, formatHMS } from "@/lib/format";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Zap, RotateCw } from "lucide-react";
 
 const RANGES = [
   { key: "day", label: "Day" },
@@ -10,10 +10,17 @@ const RANGES = [
   { key: "month", label: "Month" },
 ];
 
+const MODE_META = {
+  lecture: { label: "Lecture", icon: BookOpen, tint: "#5D9EA1" },
+  practice: { label: "Practice", icon: Zap, tint: "#6BBF7A" },
+  revision: { label: "Revision", icon: RotateCw, tint: "#B084CC" },
+};
+
 export default function CalendarPage() {
   const [range, setRange] = useState("week");
   const [ref, setRef] = useState(new Date());
-  const [data, setData] = useState({ total_seconds: 0, by_subject: [], by_day: {}, logs: [] });
+  const [modeFilter, setModeFilter] = useState("all");
+  const [data, setData] = useState({ total_seconds: 0, by_subject: [], by_day: {}, by_mode: {}, logs: [] });
 
   const load = useCallback(async () => {
     const dateStr = ref.toISOString();
@@ -32,6 +39,14 @@ export default function CalendarPage() {
     if (range === "month") next.setMonth(next.getMonth() + delta);
     setRef(next);
   };
+
+  // Filter logs by mode
+  const filteredLogs = useMemo(() => {
+    if (modeFilter === "all") return data.logs;
+    return data.logs.filter((l) => (l.mode || "lecture") === modeFilter);
+  }, [data.logs, modeFilter]);
+
+  const filteredTotal = useMemo(() => filteredLogs.reduce((a, l) => a + l.duration_seconds, 0), [filteredLogs]);
 
   const label = useMemo(() => {
     if (range === "day") return ref.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
@@ -58,14 +73,14 @@ export default function CalendarPage() {
       </motion.div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div className="flex items-center gap-2 glass rounded-full p-1">
           {RANGES.map((r) => (
             <button
               key={r.key}
               onClick={() => setRange(r.key)}
               data-testid={`range-${r.key}`}
-              className={`px-4 py-1.5 rounded-full text-xs transition-all ${
+              className={`px-4 py-1.5 rounded-full text-xs transition-all duration-500 ${
                 range === r.key ? "bg-[#FF5B22] text-white" : "text-white/60 hover:text-white"
               }`}
             >
@@ -77,7 +92,7 @@ export default function CalendarPage() {
           <button
             onClick={() => shift(-1)}
             data-testid="prev-range-btn"
-            className="w-9 h-9 rounded-full border border-white/10 hover:border-[#FF5B22]/60 flex items-center justify-center transition-all"
+            className="w-9 h-9 rounded-full border border-white/10 hover:border-[#FF5B22]/60 flex items-center justify-center transition-all duration-500"
           >
             <ChevronLeft className="w-4 h-4 text-white/70" />
           </button>
@@ -85,11 +100,42 @@ export default function CalendarPage() {
           <button
             onClick={() => shift(1)}
             data-testid="next-range-btn"
-            className="w-9 h-9 rounded-full border border-white/10 hover:border-[#FF5B22]/60 flex items-center justify-center transition-all"
+            className="w-9 h-9 rounded-full border border-white/10 hover:border-[#FF5B22]/60 flex items-center justify-center transition-all duration-500"
           >
             <ChevronRight className="w-4 h-4 text-white/70" />
           </button>
         </div>
+      </div>
+
+      {/* Mode filter */}
+      <div className="flex items-center gap-2 mb-8 flex-wrap" data-testid="mode-filter">
+        <button
+          onClick={() => setModeFilter("all")}
+          data-testid="mode-filter-all"
+          className={`px-4 py-1.5 rounded-full text-xs transition-all duration-500 border ${
+            modeFilter === "all" ? "bg-white/10 border-white/20 text-white" : "border-white/5 text-white/50 hover:text-white/80"
+          }`}
+        >
+          All modes
+        </button>
+        {Object.entries(MODE_META).map(([key, m]) => {
+          const Icon = m.icon;
+          const active = modeFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setModeFilter(key)}
+              data-testid={`mode-filter-${key}`}
+              className={`px-4 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition-all duration-500 border ${
+                active ? "text-white" : "text-white/50 hover:text-white/80 border-white/5"
+              }`}
+              style={active ? { background: m.tint, borderColor: m.tint, boxShadow: `0 0 18px ${m.tint}66` } : {}}
+            >
+              <Icon className="w-3 h-3" />
+              {m.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Summary */}
@@ -102,13 +148,14 @@ export default function CalendarPage() {
       >
         <div className="glass rounded-3xl p-8 lg:col-span-1">
           <div className="text-[10px] tracking-[0.3em] uppercase text-white/40">Total</div>
-          <div className="font-mono-timer text-5xl mt-3" style={{ color: "#FF5B22" }} data-testid="range-total">
-            {formatHM(data.total_seconds)}
+          <div className="font-mono-timer text-5xl mt-3" style={{ color: modeFilter !== "all" ? MODE_META[modeFilter].tint : "#FF5B22" }} data-testid="range-total">
+            {formatHM(modeFilter === "all" ? data.total_seconds : filteredTotal)}
           </div>
           <div className="text-xs text-white/40 mt-2 uppercase tracking-wider">
-            {data.logs.length} sessions
+            {filteredLogs.length} sessions {modeFilter !== "all" && `· ${MODE_META[modeFilter].label}`}
           </div>
           <div className="divider my-6" />
+          <div className="text-[10px] tracking-[0.3em] uppercase text-white/40 mb-3">By subject</div>
           <div className="space-y-3">
             {data.by_subject
               .sort((a, b) => b.duration_seconds - a.duration_seconds)
@@ -124,13 +171,42 @@ export default function CalendarPage() {
                       <span className="text-xs font-mono-timer text-white/60">{formatHM(b.duration_seconds)}</span>
                     </div>
                     <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: b.subject_color }} />
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: b.subject_color }} />
                     </div>
                   </div>
                 );
               })}
             {data.by_subject.length === 0 && <div className="text-sm text-white/40 italic">Nothing logged yet.</div>}
           </div>
+
+          {Object.keys(data.by_mode || {}).length > 0 && (
+            <>
+              <div className="divider my-6" />
+              <div className="text-[10px] tracking-[0.3em] uppercase text-white/40 mb-3">By mode</div>
+              <div className="space-y-3">
+                {Object.entries(MODE_META).map(([key, m]) => {
+                  const secs = data.by_mode?.[key] || 0;
+                  const pct = data.total_seconds > 0 ? (secs / data.total_seconds) * 100 : 0;
+                  if (secs === 0) return null;
+                  const Icon = m.icon;
+                  return (
+                    <div key={key}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-3.5 h-3.5" style={{ color: m.tint }} />
+                          <span className="text-sm">{m.label}</span>
+                        </div>
+                        <span className="text-xs font-mono-timer text-white/60">{formatHM(secs)}</span>
+                      </div>
+                      <div className="h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: m.tint }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="glass rounded-3xl p-8 lg:col-span-2">
@@ -142,22 +218,29 @@ export default function CalendarPage() {
       {/* Sessions list */}
       <div className="glass rounded-3xl p-6 md:p-8">
         <div className="text-[10px] tracking-[0.3em] uppercase text-white/40 mb-4">Sessions</div>
-        {data.logs.length === 0 ? (
+        {filteredLogs.length === 0 ? (
           <div className="text-white/40 text-sm italic">No sessions in this window.</div>
         ) : (
           <div className="divide-y divide-white/5">
-            {data.logs.map((l) => {
+            {filteredLogs.map((l) => {
               const startDt = new Date(l.start_time);
+              const mm = MODE_META[l.mode || "lecture"];
+              const Icon = mm.icon;
               return (
                 <div key={l.id} className="py-3 flex items-center gap-4">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: l.subject_color }} />
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: l.subject_color, boxShadow: `0 0 8px ${l.subject_color}88` }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm">{l.subject_name}</div>
-                    <div className="text-[11px] text-white/40 font-mono-timer">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm">{l.subject_name}</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] px-2 py-0.5 rounded-full border" style={{ color: mm.tint, borderColor: `${mm.tint}55`, background: `${mm.tint}11` }}>
+                        <Icon className="w-2.5 h-2.5" /> {mm.label}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-white/40 font-mono-timer mt-1">
                       {startDt.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {startDt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
-                  <div className="font-mono-timer text-sm" style={{ color: "#FF5B22" }}>{formatHMS(l.duration_seconds)}</div>
+                  <div className="font-mono-timer text-sm" style={{ color: l.subject_color }}>{formatHMS(l.duration_seconds)}</div>
                 </div>
               );
             })}

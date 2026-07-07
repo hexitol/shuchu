@@ -460,6 +460,33 @@ async def get_logs(
     }
 
 
+# ---------------------- Stats ----------------------
+
+@api_router.get("/stats")
+async def get_stats(x_user_id: Optional[str] = Header(default=None)):
+    user = await get_user(x_user_id)
+    logs = await db.study_logs.find({"user_id": user["id"]}, {"_id": 0, "date_key": 1, "duration_seconds": 1}).to_list(20000)
+    days = set(l["date_key"] for l in logs)
+    total = sum(l["duration_seconds"] for l in logs)
+    # streak: walk back from today
+    today = date_key(now_utc())
+    yesterday_dt = now_utc() - timedelta(days=1)
+    streak = 0
+    cur = now_utc()
+    # if today has no log, streak counts backward from yesterday
+    if today not in days:
+        cur = yesterday_dt
+    while date_key(cur) in days:
+        streak += 1
+        cur -= timedelta(days=1)
+    return {
+        "current_streak": streak,
+        "total_seconds": total,
+        "sessions_count": len(logs),
+        "days_studied": len(days),
+    }
+
+
 # ---------------------- Groups ----------------------
 
 @api_router.post("/groups")
