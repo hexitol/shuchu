@@ -1,0 +1,86 @@
+{
+  "theme": "DARK",
+  "archetype": "5",
+  "design_philosophy": "High-end cinematic productivity. Inspired by Claude's editorial warmth combined with futuristic glassmorphism and crazy hover effects. Monochromatic deep dark space with bright terracotta/orange accents that glow like a sun.",
+  "colors": {
+    "background_base": "#0A0908",
+    "background_surface": "rgba(20, 18, 16, 0.6)",
+    "primary_accent": "#FF5B22",
+    "secondary_accent": "#C96442",
+    "text_primary": "#F0ECE0",
+    "text_secondary": "#A39E93",
+    "border_subtle": "rgba(255, 255, 255, 0.08)",
+    "glass_background": "rgba(255, 255, 255, 0.03)",
+    "hover_glow": "rgba(255, 91, 34, 0.5)"
+  },
+  "typography": {
+    "fonts": {
+      "headings": "'Cormorant Garamond', serif",
+      "body": "'Figtree', sans-serif",
+      "mono": "'JetBrains Mono', monospace"
+    },
+    "hierarchy": {
+      "h1": "text-5xl sm:text-6xl tracking-tighter font-medium text-[#F0ECE0]",
+      "h2": "text-3xl sm:text-4xl tracking-tight font-medium text-[#F0ECE0]",
+      "h3": "text-xl sm:text-2xl font-medium text-[#F0ECE0]",
+      "body": "text-base leading-relaxed text-[#A39E93]",
+      "timer_display": "text-6xl sm:text-[8vw] font-mono tracking-tighter font-light text-[#FF5B22] drop-shadow-[0_0_12px_rgba(255,91,34,0.4)]",
+      "overline": "text-xs tracking-[0.2em] uppercase text-[#A39E93]"
+    }
+  },
+  "spacing_and_layout": {
+    "generous_padding": "Use p-6 to p-12 for glass cards. Never cramp elements.",
+    "dashboard_grid": "Bento Grid (Control Room Grid). Base: grid-cols-1 md:grid-cols-3 lg:grid-cols-4, gap-6. Heights must be full to match neighbors.",
+    "borders_and_radius": "Rounded-2xl or rounded-3xl for glass surfaces. Inner border of 1px solid rgba(255, 255, 255, 0.08) to make glass pop.",
+    "alignment": "Optical alignment. Left-align most widgets and text. Center align the main stopwatch timer and auth input for focus."
+  },
+  "surface_strategies": {
+    "glassmorphism": {
+      "description": "Optical Clarity Glass for cards, headers, and modals.",
+      "classes": "bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+    },
+    "crazy_hover_effects": {
+      "tracing_beam_glow": "Use Framer Motion to animate a conic gradient border or a blurred orange shadow behind interactive cards on hover.",
+      "magnetic_button": "Buttons should lift slightly (-translate-y-1) and gain a heavy orange shadow on hover: hover:shadow-[0_0_24px_rgba(255,91,34,0.6)] hover:border-[#FF5B22].",
+      "pulse": "Active study states or live users should have a slow pulsing orange ring using Tailwind animate-pulse or Framer Motion."
+    }
+  },
+  "components": {
+    "buttons": "Shadcn based. Primary: bg-[#FF5B22] text-white hover:bg-[#FF7347] transition-all. Secondary: Glass button bg-white/5 border border-white/10 hover:border-[#FF5B22] hover:text-[#FF5B22].",
+    "inputs": "Shadcn customized. bg-white/5 border-white/10 text-[#F0ECE0] focus:ring-2 focus:ring-[#FF5B22]/50 placeholder:text-white/20.",
+    "calendar": "Shadcn calendar for selecting dates. For the heatmap, build a custom CSS grid showing daily study time with intensity mapped to shades of orange.",
+    "dropdowns": "Shadcn Select. Must have glass background, border-white/10, and hover effects matching the theme.",
+    "cards": "Do not use default Shadcn Card. Build custom glass cards using raw HTML/Tailwind with the glassmorphism classes defined above."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1781966995939-3748dc1f1742?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxkYXJrJTIwYW1iaWVudCUyMHN0dWR5JTIwZGVzayUyMGxhbXB8ZW58MHx8fHwxNzgzNDA0MjEwfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Dark ambient study desk lamp with computer glow",
+        "category": "auth_background"
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "usage": "Use thin, minimalist icons. Size 20 or 24. Active state should be tinted orange (#FF5B22)."
+    }
+  },
+  "animations": {
+    "page_transitions": "Framer Motion: initial opacity 0, y 20 -> animate opacity 1, y 0, duration 0.5s.",
+    "list_stagger": "Framer Motion: staggerChildren 0.1s for study group users and tasks.",
+    "timer_active": "Subtle breathing animation (scale 1.0 to 1.02) on the timer text or surrounding ring while counting up."
+  },
+  "accessibility": {
+    "contrast": "Ensure #F0ECE0 on #0A0908 passes APCA/WCAG. Form inputs must have visible focus rings (#FF5B22).",
+    "motion": "Respect prefers-reduced-motion for all glowing and pulsing effects.",
+    "testing": "All interactive elements MUST have data-testid attributes (e.g., data-testid='start-timer-button')."
+  },
+  "instructions_to_main_agent": [
+    "Install and setup Framer Motion for the crazy hover effects and page transitions.",
+    "Setup Google Fonts: 'Cormorant Garamond', 'Figtree', 'JetBrains Mono' via Next.js or index.html.",
+    "Build a custom heatmap grid for the calendar study logs using shades of #FF5B22.",
+    "For the real-time study groups view, use a Bento grid where each user's card is a glass surface with their live timer. If they are actively studying, give their card an animated orange glow border.",
+    "The Stopwatch Timer must be the hero element on the main dashboard, using massive 'JetBrains Mono' font, centered, with an orange drop-shadow.",
+    "Username-only Auth screen should have the 'auth_background' image behind a heavy black/blur overlay (bg-black/60 backdrop-blur-2xl) with a glowing login input."
+  ]
+}
