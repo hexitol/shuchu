@@ -60,7 +60,7 @@ export default function Login() {
           <div className="w-10 h-10 rounded-full flex items-center justify-center orange-btn">
             <Sun className="w-5 h-5 text-white" strokeWidth={2.4} />
           </div>
-          <div className="font-serif-display text-4xl">Yeolpum</div>
+          <div className="font-serif-display text-4xl">Shūchū</div>
         </div>
 
         <div className="text-center mb-10">

@@ -27,7 +27,7 @@ export default function Layout() {
             <Sun className="w-4 h-4 text-white" strokeWidth={2.4} />
           </div>
           <div>
-            <div className="font-serif-display text-2xl leading-none">Yeolpum</div>
+            <div className="font-serif-display text-2xl leading-none">Shūchū</div>
             <div className="text-[10px] tracking-[0.25em] text-white/40 uppercase mt-1">Study Cadence</div>
           </div>
         </div>
