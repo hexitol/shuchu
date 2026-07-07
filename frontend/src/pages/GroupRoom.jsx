@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Copy, Users, Play, Square, Globe, Lock, LogOut } from "lucide-react";
+import { ArrowLeft, Copy, Users, Square, Globe, Lock, LogOut } from "lucide-react";
 import { api, WS_BASE } from "@/lib/api";
 import { formatHMS } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { MODES, modeMeta } from "@/pages/Timer";
 
 export default function GroupRoom() {
   const { id } = useParams();
@@ -15,6 +16,7 @@ export default function GroupRoom() {
   const [members, setMembers] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [session, setSession] = useState(null);
+  const [mode, setMode] = useState("lecture");
   const [tick, setTick] = useState(0);
   const wsRef = useRef(null);
 
@@ -72,7 +74,7 @@ export default function GroupRoom() {
 
   const startTimer = async (subject_id) => {
     try {
-      const { data } = await api.post("/timer/start", { subject_id, group_id: id });
+      const { data } = await api.post("/timer/start", { subject_id, mode, group_id: id });
       setSession(data);
     } catch (e) {
       toast.error("Failed to start");
@@ -211,10 +213,8 @@ function MemberCard({ m, isMe, tick, delay }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay, duration: 0.5 }}
-      className={`glass rounded-2xl p-5 relative overflow-hidden ${
-        m.is_studying ? "border-[#FF5B22]/40" : ""
-      }`}
-      style={m.is_studying ? { boxShadow: "0 0 32px rgba(255,91,34,0.15), inset 0 1px 0 rgba(255,255,255,0.06)" } : {}}
+      className={`glass rounded-2xl p-5 relative overflow-hidden`}
+      style={m.is_studying ? { boxShadow: `0 0 32px ${(m.subject_color || "#FF5B22")}33, inset 0 1px 0 rgba(255,255,255,0.06)`, borderColor: `${m.subject_color || "#FF5B22"}66` } : {}}
     >
       {m.is_studying && (
         <div
@@ -225,10 +225,12 @@ function MemberCard({ m, isMe, tick, delay }) {
         />
       )}
       <div className="relative flex flex-col items-center text-center">
-        <div className={`w-12 h-12 rounded-full border flex items-center justify-center text-lg font-mono-timer mb-3 ${
-          m.is_studying ? "border-[#FF5B22] pulse-ring" : "border-white/10"
-        }`}
-          style={{ color: m.is_studying ? "#FF5B22" : "#F0ECE0" }}
+        <div
+          className={`w-12 h-12 rounded-full border flex items-center justify-center text-lg font-mono-timer mb-3 ${m.is_studying ? "pulse-ring" : "border-white/10"}`}
+          style={{
+            color: m.is_studying ? (m.subject_color || "#FF5B22") : "#F0ECE0",
+            borderColor: m.is_studying ? (m.subject_color || "#FF5B22") : undefined,
+          }}
         >
           {m.username?.[0]?.toUpperCase()}
         </div>
@@ -241,7 +243,13 @@ function MemberCard({ m, isMe, tick, delay }) {
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: m.subject_color }} />
               <span className="text-[10px] text-white/60 uppercase tracking-wider">{m.subject_name}</span>
             </div>
-            <div className="font-mono-timer text-lg mt-2" style={{ color: "#FF5B22" }} data-testid={`member-timer-${m.username}`}>
+            {m.mode && (
+              <div className="flex items-center gap-1 mt-1 text-[9px] uppercase tracking-[0.2em]" style={{ color: modeMeta(m.mode).tint }}>
+                {(() => { const Icon = modeMeta(m.mode).icon; return <Icon className="w-2.5 h-2.5" />; })()}
+                {modeMeta(m.mode).label}
+              </div>
+            )}
+            <div className="font-mono-timer text-lg mt-2" style={{ color: m.subject_color || "#FF5B22" }} data-testid={`member-timer-${m.username}`}>
               {formatHMS(elapsed)}
             </div>
           </>

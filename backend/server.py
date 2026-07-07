@@ -98,7 +98,12 @@ class Task(BaseModel):
 
 class TimerStartIn(BaseModel):
     subject_id: str
+    mode: Optional[str] = "lecture"
     group_id: Optional[str] = None
+
+
+class TaskReorderIn(BaseModel):
+    ordered_ids: List[str]
 
 
 class StudyLog(BaseModel):
@@ -197,6 +202,7 @@ async def get_group_members_state(group_id: str) -> List[dict]:
             "is_studying": bool(s),
             "subject_name": s.get("subject_name") if s else None,
             "subject_color": s.get("subject_color") if s else None,
+            "mode": s.get("mode") if s else None,
             "start_time": s.get("start_time") if s else None,
         })
     out.sort(key=lambda x: (not x["is_studying"], x["username"].lower()))
@@ -267,23 +273,34 @@ async def delete_subject(subject_id: str, x_user_id: Optional[str] = Header(defa
 @api_router.get("/tasks")
 async def list_tasks(x_user_id: Optional[str] = Header(default=None)):
     user = await get_user(x_user_id)
-    items = await db.tasks.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    items = await db.tasks.find({"user_id": user["id"]}, {"_id": 0}).sort([("order", 1), ("created_at", -1)]).to_list(500)
     return items
 
 
 @api_router.post("/tasks")
 async def create_task(payload: TaskIn, x_user_id: Optional[str] = Header(default=None)):
     user = await get_user(x_user_id)
+    top = await db.tasks.find_one({"user_id": user["id"]}, {"_id": 0}, sort=[("order", 1)])
+    top_order = top.get("order", 0) if top else 0
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user["id"],
         "title": payload.title.strip(),
         "subject_id": payload.subject_id,
         "done": False,
+        "order": top_order - 1,
         "created_at": iso(now_utc()),
     }
     await db.tasks.insert_one(doc)
     return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api_router.post("/tasks/reorder")
+async def reorder_tasks(payload: TaskReorderIn, x_user_id: Optional[str] = Header(default=None)):
+    user = await get_user(x_user_id)
+    for idx, tid in enumerate(payload.ordered_ids):
+        await db.tasks.update_one({"id": tid, "user_id": user["id"]}, {"$set": {"order": idx}})
+    return {"ok": True}
 
 
 @api_router.patch("/tasks/{task_id}")
@@ -323,11 +340,15 @@ async def start_timer(payload: TimerStartIn, x_user_id: Optional[str] = Header(d
     existing = await db.active_sessions.find_one({"user_id": user["id"]}, {"_id": 0})
     if existing:
         await _stop_and_log(user, existing)
+    mode = (payload.mode or "lecture").lower()
+    if mode not in ("lecture", "practice", "revision"):
+        mode = "lecture"
     session = {
         "user_id": user["id"],
         "subject_id": subject["id"],
         "subject_name": subject["name"],
         "subject_color": subject["color"],
+        "mode": mode,
         "start_time": iso(now_utc()),
         "group_id": payload.group_id,
     }
@@ -352,6 +373,7 @@ async def _stop_and_log(user: dict, session: dict) -> Optional[dict]:
         "subject_id": session["subject_id"],
         "subject_name": session["subject_name"],
         "subject_color": session["subject_color"],
+        "mode": session.get("mode", "lecture"),
         "start_time": session["start_time"],
         "end_time": iso(end_dt),
         "duration_seconds": duration,
@@ -420,6 +442,12 @@ async def get_logs(
     for entry in logs:
         by_day[entry["date_key"]] = by_day.get(entry["date_key"], 0) + entry["duration_seconds"]
 
+    # by mode
+    by_mode: Dict[str, int] = {}
+    for entry in logs:
+        m = entry.get("mode", "lecture")
+        by_mode[m] = by_mode.get(m, 0) + entry["duration_seconds"]
+
     return {
         "range": range,
         "start": iso(start),
@@ -427,6 +455,7 @@ async def get_logs(
         "total_seconds": total,
         "by_subject": list(by_subject.values()),
         "by_day": by_day,
+        "by_mode": by_mode,
         "logs": logs,
     }
 
