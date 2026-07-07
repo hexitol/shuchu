@@ -101,18 +101,77 @@ body::before {
 
 .glass-hover {
     transition:
-        border-color 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-        box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-        background 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        border-color 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+        box-shadow 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+        transform 0.6s cubic-bezier(0.19, 1, 0.22, 1),
+        background 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+    will-change: transform, box-shadow;
 }
 .glass-hover:hover {
     border-color: rgba(255, 91, 34, 0.6);
     box-shadow:
-        0 12px 40px rgba(0, 0, 0, 0.55),
-        0 0 32px rgba(255, 91, 34, 0.18),
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        0 0 44px rgba(255, 91, 34, 0.22),
         inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+}
+.glass-hover:hover {
+    border-color: rgba(255, 91, 34, 0.6);
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.55),
+        0 0 44px rgba(255, 91, 34, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transform: translateY(-4px);
+}
+
+.hover-lift {
+    transition:
+        transform 0.55s cubic-bezier(0.19, 1, 0.22, 1),
+        box-shadow 0.55s cubic-bezier(0.19, 1, 0.22, 1),
+        border-color 0.55s cubic-bezier(0.19, 1, 0.22, 1);
+    will-change: transform;
+}
+.hover-lift:hover {
+    transform: translateY(-4px);
+}
+
+.timer-breathe {
+    animation: breathe 5.2s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+@keyframes breathe {
+    0%,
+    100% {
+        transform: scale(1);
+        text-shadow: 0 0 24px var(--glow-color, rgba(255, 91, 34, 0.35));
+    }
+    50% {
+        transform: scale(1.025);
+        text-shadow: 0 0 60px var(--glow-color, rgba(255, 91, 34, 0.7));
+    }
+}
+
+.pulse-ring {
+    box-shadow: 0 0 0 0 var(--pulse-color, rgba(255, 91, 34, 0.55));
+    animation: pulse-ring 2.8s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+@keyframes pulse-ring {
+    0% {
+        box-shadow: 0 0 0 0 var(--pulse-color, rgba(255, 91, 34, 0.55));
+    }
+    70% {
+        box-shadow: 0 0 0 18px transparent;
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+@keyframes fade-slide-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.msg-enter {
+    animation: fade-slide-up 0.6s cubic-bezier(0.19, 1, 0.22, 1) both;
 }
 
 .accent-glow {
@@ -188,11 +247,12 @@ body::before {
 
 .hover-lift {
     transition:
-        transform 0.3s ease,
-        box-shadow 0.3s ease;
+        transform 0.55s cubic-bezier(0.19, 1, 0.22, 1),
+        box-shadow 0.55s cubic-bezier(0.19, 1, 0.22, 1);
+    will-change: transform;
 }
 .hover-lift:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px);
 }
 
 .orange-btn {
@@ -200,16 +260,17 @@ body::before {
     box-shadow:
         0 6px 24px rgba(255, 91, 34, 0.35),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
+    transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
 }
 .orange-btn:hover {
     box-shadow:
-        0 10px 34px rgba(255, 91, 34, 0.55),
+        0 14px 44px rgba(255, 91, 34, 0.55),
         inset 0 1px 0 rgba(255, 255, 255, 0.28);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 .orange-btn:active {
     transform: translateY(0);
+    transition-duration: 0.15s;
 }
 
 @layer base {

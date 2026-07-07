@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Copy, Users, Square, Globe, Lock, LogOut } from "lucide-react";
+import { ArrowLeft, Copy, Users, Square, Globe, Lock, LogOut, Send, MessageCircle } from "lucide-react";
 import { api, WS_BASE } from "@/lib/api";
 import { formatHMS } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,10 @@ export default function GroupRoom() {
   const [session, setSession] = useState(null);
   const [mode, setMode] = useState("lecture");
   const [tick, setTick] = useState(0);
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const chatScrollRef = useRef(null);
   const wsRef = useRef(null);
 
   const loadGroup = useCallback(async () => {
@@ -40,7 +44,14 @@ export default function GroupRoom() {
   useEffect(() => {
     loadGroup();
     loadMyState();
-  }, [loadGroup, loadMyState]);
+    // load chat history
+    (async () => {
+      try {
+        const { data } = await api.get(`/groups/${id}/messages`);
+        setMessages(data);
+      } catch (e) { /* ignore */ }
+    })();
+  }, [loadGroup, loadMyState, id]);
 
   // Ticker for live counter
   useEffect(() => {
@@ -58,6 +69,7 @@ export default function GroupRoom() {
       try {
         const msg = JSON.parse(ev.data);
         if (msg.type === "members") setMembers(msg.members);
+        if (msg.type === "message") setMessages((prev) => [...prev, msg.message]);
       } catch (e) {
         // ignore
       }
@@ -102,6 +114,28 @@ export default function GroupRoom() {
       toast.success("Code copied");
     }
   };
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    const text = chatInput.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      await api.post(`/groups/${id}/messages`, { text });
+      setChatInput("");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not send");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   if (!group) {
     return <div className="p-10 text-white/40">Opening room...</div>;
@@ -189,13 +223,78 @@ export default function GroupRoom() {
         </div>
       </div>
 
-      {/* Members grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <AnimatePresence>
-          {members.map((m, i) => (
-            <MemberCard key={m.user_id} m={m} isMe={m.user_id === user?.id} tick={tick} delay={i * 0.04} />
-          ))}
-        </AnimatePresence>
+      {/* Members grid + Chat */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4 content-start">
+          <AnimatePresence>
+            {members.map((m, i) => (
+              <MemberCard key={m.user_id} m={m} isMe={m.user_id === user?.id} tick={tick} delay={i * 0.05} />
+            ))}
+          </AnimatePresence>
+        </div>
+
+        {/* Chat panel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.9, ease: [0.19, 1, 0.22, 1] }}
+          className="glass rounded-3xl p-5 flex flex-col h-[560px] lg:h-[calc(100vh-320px)] lg:min-h-[420px] lg:sticky lg:top-6"
+          data-testid="chat-panel"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-[10px] tracking-[0.3em] uppercase text-white/40">Chat</div>
+              <h3 className="font-serif-display text-lg mt-0.5">Whisper room</h3>
+            </div>
+            <MessageCircle className="w-4 h-4 text-white/30" />
+          </div>
+          <div className="divider mb-3" />
+          <div
+            ref={chatScrollRef}
+            data-testid="chat-messages"
+            className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-0"
+          >
+            {messages.length === 0 && (
+              <div className="text-xs text-white/40 italic text-center py-8">Say hi — the room is quiet.</div>
+            )}
+            {messages.map((msg) => {
+              const mine = msg.user_id === user?.id;
+              return (
+                <div key={msg.id} className={`msg-enter flex flex-col ${mine ? "items-end" : "items-start"}`}>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-1 px-1">
+                    {mine ? "you" : msg.username} · {new Date(msg.created_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                  <div
+                    className={`max-w-[85%] px-3.5 py-2 rounded-2xl text-sm break-words ${
+                      mine ? "text-white" : "bg-white/[0.05] border border-white/10 text-[#F0ECE0]"
+                    }`}
+                    style={mine ? { background: "linear-gradient(180deg,#ff6a35,#ff5b22)", boxShadow: "0 4px 18px rgba(255,91,34,0.35)" } : {}}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <form onSubmit={sendMessage} className="mt-3 flex gap-2">
+            <input
+              data-testid="chat-input"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Type a message…"
+              maxLength={500}
+              className="flex-1 bg-white/[0.03] border border-white/10 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-[#FF5B22]/60 transition-all"
+            />
+            <button
+              data-testid="chat-send-btn"
+              type="submit"
+              disabled={sending || !chatInput.trim()}
+              className="orange-btn text-white rounded-full w-10 h-10 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </motion.div>
       </div>
     </div>
   );
@@ -209,11 +308,12 @@ function MemberCard({ m, isMe, tick, delay }) {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ delay, duration: 0.5 }}
-      className={`glass rounded-2xl p-5 relative overflow-hidden`}
+      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ delay, duration: 0.9, ease: [0.19, 1, 0.22, 1] }}
+      whileHover={{ y: -4, transition: { duration: 0.4, ease: [0.19, 1, 0.22, 1] } }}
+      className="glass rounded-2xl p-5 relative overflow-hidden"
       style={m.is_studying ? { boxShadow: `0 0 32px ${(m.subject_color || "#FF5B22")}33, inset 0 1px 0 rgba(255,255,255,0.06)`, borderColor: `${m.subject_color || "#FF5B22"}66` } : {}}
     >
       {m.is_studying && (

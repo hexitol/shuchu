@@ -127,6 +127,10 @@ class JoinIn(BaseModel):
     code: str
 
 
+class MessageIn(BaseModel):
+    text: str
+
+
 class Group(BaseModel):
     id: str
     name: str
@@ -580,6 +584,43 @@ async def get_group(group_id: str, x_user_id: Optional[str] = Header(default=Non
         raise HTTPException(status_code=403, detail="Not a member")
     members = await get_group_members_state(group_id)
     return {**_serialize_group(grp), "members": members}
+
+
+@api_router.get("/groups/{group_id}/messages")
+async def list_messages(group_id: str, x_user_id: Optional[str] = Header(default=None)):
+    user = await get_user(x_user_id)
+    grp = await db.groups.find_one({"id": group_id}, {"_id": 0})
+    if not grp:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if not grp["is_public"] and user["id"] not in grp.get("members", []):
+        raise HTTPException(status_code=403, detail="Not a member")
+    msgs = await db.chat_messages.find({"group_id": group_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return list(reversed(msgs))
+
+
+@api_router.post("/groups/{group_id}/messages")
+async def send_message(group_id: str, payload: MessageIn, x_user_id: Optional[str] = Header(default=None)):
+    user = await get_user(x_user_id)
+    grp = await db.groups.find_one({"id": group_id}, {"_id": 0})
+    if not grp:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if user["id"] not in grp.get("members", []):
+        raise HTTPException(status_code=403, detail="Join first")
+    text = payload.text.strip()[:500]
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty message")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "group_id": group_id,
+        "user_id": user["id"],
+        "username": user["username"],
+        "text": text,
+        "created_at": iso(now_utc()),
+    }
+    await db.chat_messages.insert_one(doc)
+    out = {k: v for k, v in doc.items() if k != "_id"}
+    await manager.broadcast(group_id, {"type": "message", "message": out})
+    return out
 
 
 # ---------------------- WebSocket ----------------------
