@@ -13,3 +13,9 @@ venv/
 /app/memory/
 /app/test_reports/
 /app/tests/
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
