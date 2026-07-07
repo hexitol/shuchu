@@ -1,0 +1,27 @@
+{
+  "summary": "First-pass smoke test of Yeolpum study app. Backend: 13 endpoints verified via curl (auth/login, subjects GET+POST, timer start/current/stop, tasks POST, logs?range=week, groups POST/public/mine). Frontend: E2E Playwright flow logged in as fresh user, added Math subject, ran 3s timer session, added+toggled task, created public group 'Focus Cafe', started WS-driven quick-start session (member timer ticked to 00:00:02 live), toggled Calendar Day/Week/Month, verified 91 heatmap cells and prev/next range label change, and logged out returning to /. All 8 UI flows and all backend endpoints returned expected data.",
+  "tested_scope": ["frontend", "backend", "auth", "integration"],
+  "passed": [
+    "POST /api/auth/login returns user object",
+    "GET/POST /api/subjects (default General auto-created; Math added)",
+    "POST /api/timer/start, GET /api/timer/current, POST /api/timer/stop (duration_seconds=3 stored)",
+    "POST /api/tasks creates task",
+    "GET /api/logs?range=week returns total_seconds, by_subject, by_day",
+    "POST /api/groups (public), GET /api/groups/public, GET /api/groups/mine",
+    "UI login redirects to /app/timer",
+    "Timer page: add subject, switch subject, start/stop timer, today-total renders (0m due to <1min rounding)",
+    "Task add + toggle done",
+    "Groups: create public 'Focus Cafe' navigates to /app/groups/:id with room name + invite code",
+    "WebSocket: quick-start subject in group room shows live-ticking member-timer (00:00:02)",
+    "Calendar: 91 heatmap cells, Day/Week/Month toggles, prev/next changes range-label (e.g., 'Jul 6 — Jul 12' -> 'Jun 29 — Jul 5')",
+    "Sidebar nav (Timer/Groups/Calendar) and logout clears localStorage, returns to /"
+  ],
+  "failed": [],
+  "action_items": [
+    "Minor UX note (not blocking): 'today-total' and 'range-total' display '0m' for sub-minute sessions; backend correctly stores 3s. Consider showing seconds when <1min."
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "test_credentials": "Loaded from /app/memory/test_credentials.md — username-only auth, any string works"
+}
